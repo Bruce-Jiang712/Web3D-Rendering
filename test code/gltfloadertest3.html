@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - glTF loader</title>
+		<meta charset="utf-8">
+		
+	</head>
+		
+		
+
+	<body>
+		
+		<script type="module">
+
+			import * as THREE from '../build/three.module.js';
+
+			import { OrbitControls } from '../examples/jsm/controls/OrbitControls.js';
+			import { GLTFLoader } from '../examples/jsm/loaders/GLTFLoader.js';
+			import { RGBELoader } from '../examples/jsm/loaders/RGBELoader.js';
+			import Stats from '../examples/jsm/libs/stats.module.js';
+			import {GUI} from '../examples/jsm/libs/dat.gui.module.js';
+			//import { FresnelShader } from '../examples/jsm/shaders/FresnelShader.js'
+
+			var camera, scene, renderer,spotLight,lightHelper;
+			var container;
+			var raycaster;
+			var INTERSECTED;
+			var theta = 0;
+			var feijiModel;
+			var meshList = [];
+			var helper,sceneHelpers;
+			var i=0;
+			var gui,gui1;
+			var mouse;
+			var envMap;
+			var background;
+			var meshtest;
+			var PLightIntensity;
+			var directionallight;
+			var ambient;
+			var ALightIntensity;
+			var LightIntensity;
+			var count=0;
+					
+			// var matGroup;
+			// var rendererGroup;
+			// var PBRGroup;
+			// var transparentGroup;
+			// var waterGroup;
+			var shaderholder = new Array();
+			var useFresnel = false;
+			var cubeCamera1;
+			var cubeCamera2;
+			var cubeCamera3;
+			var sphereGeometry;
+			var sphereMaterial;
+			var cubeMaterial;
+			var sphere ;
+			var cube;
+			var cubeRenderTarget1;
+			var cubeRenderTarget2;
+			var cubeRenderTarget3;			
+			let lon = 0, lat = 0;
+			let phi = 0;
+			const spheres = [];
+		
+			//var material;
+			
+			
+			
+			
+			
+			
+		
+			//*******************************************//	
+
+			init();
+			animate();
+			
+		
+			//*******************************************//
+
+			function init() {
+				
+				mouse = new THREE.Vector2();
+				sceneHelpers = new THREE.Scene();
+				helper = new THREE.BoxHelper();
+				sceneHelpers.add(helper);
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+		
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 20000 );
+				camera.position.set( 100, 180, 400 );
+				
+				
+
+				//Create a scene
+				scene = new THREE.Scene();
+				scene.add(camera);
+
+
+				//*******************************************//
+				//Light settings
+				ambient = new THREE.AmbientLight( 0xffffff,0.5 );
+				scene.add( ambient );
+				
+				directionallight = new THREE.SpotLight(0xffffff,1);
+				///directionallight.position.set(0,1000,1000);
+				directionallight.position.set(10,100,100);
+				directionallight.castShadow = true;
+				scene.add(directionallight);
+				//Set up shadow properties for the light
+				// directionallight.shadow.mapSize.width = 512; // default
+				// directionallight.shadow.mapSize.height = 512; // default
+				// directionallight.shadow.camera.near = 0.5; // default
+				// directionallight.shadow.camera.far =1000; // default
+				
+				// const sphereGeometry1 = new THREE.SphereGeometry( 5, 32, 32 );
+				// const sphereMaterial1 = new THREE.MeshStandardMaterial( { color: 0xff0000 } );
+				// const sphere1 = new THREE.Mesh( sphereGeometry1, sphereMaterial1 );
+				// sphere1.castShadow = true; //default is false
+				// sphere1.receiveShadow = false; //default
+				
+				// scene.add( sphere1 );
+				// sphere1.position.set(0,10,0);
+
+
+				// const planeGeometry = new THREE.PlaneGeometry( 20, 20, 32, 32 );
+				// const planeMaterial = new THREE.MeshStandardMaterial( { color: 0x00ff00 } )
+				// const plane = new THREE.Mesh( planeGeometry, planeMaterial );
+				// plane.receiveShadow = true;
+				// plane.position.set(0,-2,2);
+				// scene.add( plane );
+
+				//const pointLight = new THREE.PointLight( 0xffffff, 1, 100 );
+				//pointLight.position.set( 1, 1, 1);
+				//scene.add( pointLight );
+				
+				//scene.background = new THREE.Color( 0x404040,);
+				background = new THREE.CubeTextureLoader()
+					.setPath('../../testttttt/sky/')
+					.load(['px.jpg', 'nx.jpg', 'py.jpg', 'ny.jpg', 'pz.jpg', 'nz.jpg']);
+				var texture = new THREE.CubeTextureLoader()
+					.setPath('../examples/textures/cube/Park2/')
+					.load(['negx.jpg', 'posx.jpg', 'negy.jpg', 'posy.jpg','negz.jpg',  'posz.jpg']);
+				envMap =
+					new THREE.CubeTextureLoader()
+					.setPath('../../testttttt/sky/')
+					.load(['front.jpg', 'back.jpg', 'left.jpg', 'right.jpg', 'top.jpg', 'bottom.jpg']);
+
+				scene.background= background;
+			
+				
+				
+				var ly;
+				//Load a gltf file
+				var loader = new GLTFLoader().setPath( '../gltfmodels/Models/green_island/' );
+				loader.load( 'scene.gltf', function ( object ) {
+					feijiModel = object;
+					ly = feijiModel.scene.children;
+					feijiModel.scene.scale.set(1000,1000,1000);
+					controlObj_Recursive();	
+					meshtest = feijiModel.scene;	
+					meshtest.traverse((child) => {
+              		if ( ! child.isMesh ) return;
+					var prevMaterial = child.material;
+					child.material = new THREE.MeshStandardMaterial();
+					THREE.MeshStandardMaterial.prototype.copy.call( child.material, prevMaterial );
+					child.material.name = 'StandardMaterial';
+					child.material.envMap=envMap;
+					var holder={
+						name1:child.name,
+						name2:child.material.name,
+						holdmaterial:child.material
+					};
+					shaderholder.unshift(holder);
+					child.castShadow=true;
+					child.receiveShadow=true;
+					});
+					scene.add(meshtest);
+				} );
+
+				
+			
+				const albedotexture = new THREE.TextureLoader().load( "../textures/beaten-up-metal1-ue/beaten-up-metal1-albedo.png" );
+				const aotexture = new THREE.TextureLoader().load( "../textures/beaten-up-metal1-ue/beaten-up-metal1-ao.png" );
+				const metallictexture = new THREE.TextureLoader().load( "../textures/beaten-up-metal1-ue/beaten-up-metal1-Metallic.png" );
+				const roughnesstexture = new THREE.TextureLoader().load( "../textures/beaten-up-metal1-ue/beaten-up-metal1-Roughness.png" );
+				const normaltexture = new THREE.TextureLoader().load( "../textures/beaten-up-metal1-ue/beaten-up-metal1-Normal-dx.png" );
+				const heighttexture = new THREE.TextureLoader().load( "../textures/beaten-up-metal1-ue/beaten-up-metal1-Height.png" );
+				
+			
+				var sphereMaterial222 = new THREE.MeshStandardMaterial();
+				sphereMaterial222.name='StandardMaterial';
+				var mesh222 = new THREE.Mesh(new THREE.SphereGeometry(5,32,32),sphereMaterial222 );
+				mesh222.position.set(0,15,0);
+				mesh222.scale.set(0.3,0.3,0.3);
+				scene.add(mesh222);
+			
+				
+				cubeRenderTarget1 = new THREE.WebGLCubeRenderTarget( 128, { 
+					format: THREE.RGBFormat, 
+					generateMipmaps: true, 
+					minFilter:THREE.LinearMipmapLinearFilter,
+					encoding: THREE.sRGBEncoding
+				 } );
+				cubeCamera1 = new THREE.CubeCamera(1, 1000,cubeRenderTarget1 );
+				cubeRenderTarget2 = new THREE.WebGLCubeRenderTarget( 256, {
+					format: THREE.RGBFormat,
+					generateMipmaps: true,
+					minFilter: THREE.LinearMipmapLinearFilter,
+					encoding: THREE.sRGBEncoding
+				} );
+
+				cubeCamera2 = new THREE.CubeCamera( 1, 1000, cubeRenderTarget2 );
+				sphereGeometry = new THREE.IcosahedronGeometry( 20, 8 );
+				sphereMaterial = new THREE.MeshStandardMaterial( { 
+					//color: 0xC0C0C0,
+					map:albedotexture,
+					displacementMap:heighttexture,
+					// //displacementScale:1,
+					aoMap:aotexture,
+					metalnessMap:metallictexture,
+					roughnessMap:roughnesstexture,
+					normalMap:normaltexture,					
+					// metalness:1,
+					// roughness:0,
+					envMap:cubeRenderTarget1.texture,
+					
+					
+				} );
+				cubeMaterial = new THREE.MeshStandardMaterial( { 
+					//color: 0xC0C0C0,
+					//map:albedotexture,
+					//displacementMap:heighttexture,
+					//displacementScale:1,
+					//aoMap:aotexture,
+					//aoMap:heighttexture,
+					//metalnessMap:metallictexture,
+					//roughnessMap:roughnesstexture,
+					//normalMap:normaltexture,
+
+					// shininess: 100,
+					// color: 0xffffff,
+					// specular: 0xffffff,
+					
+					metalness:1,
+					roughness:0,
+					envMap:cubeRenderTarget2.texture,
+					// combine: THREE.MultiplyOperation,
+					// reflectivity: 1
+				} );
+				sphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
+				sphere.name='Sphere';
+				scene.add( sphere );
+				cube = new THREE.Mesh( new THREE.BoxGeometry( 10, 10, 10 ), cubeMaterial );
+				scene.add( cube );
+				sphere.add(cubeCamera1);
+				cube.add(cubeCamera2);
+				cubeMaterial.name='StandardMaterial';
+				sphereMaterial.name='StandardMaterial';
+				sphere.castShadow = true; //default is false
+				sphere.receiveShadow = true; //default
+			
+				var holder={
+					name1:sphere.name,
+					name2:sphere.material.name,
+					holdmaterial:sphere.material
+
+				};
+				shaderholder.unshift(holder);
+				
+				
+				sphere.position.set(10,10,100);
+				cube.position.set(10,10,100);
+
+
+				cubeRenderTarget3 = new THREE.WebGLCubeRenderTarget( 128, { 
+					format: THREE.RGBFormat, 
+					generateMipmaps: true, 
+					minFilter:THREE.LinearMipmapLinearFilter,
+					encoding: THREE.sRGBEncoding
+				} );
+				cubeCamera3 = new THREE.CubeCamera(1, 1000,cubeRenderTarget3 );
+				sphere.add(cubeCamera3);
+				const geometryqipao = new THREE.SphereGeometry( 10, 32, 16 );
+				var FresnelShaderqipao =new THREE.ShaderMaterial( {
+
+					uniforms: {
+
+						mRefractionRatio: { value: 1.02 },
+						mFresnelBias: { value: 0.1 },
+						mFresnelPower: { value: 0.6 },
+						mFresnelScale: { value: 1.0 },
+						vfresnelfactor:{ value: 0.15},
+						tCube: { value: null },
+						
+
+					},
+					blending: THREE.NormalBlending,
+					depthTest: false,
+					transparent: true,
+					vertexShader: document.getElementById( 'vertexshader' ).textContent,
+					fragmentShader: document.getElementById( 'fragmentshader' ).textContent
+
+				})
+
+				const shaderqipao = FresnelShaderqipao;
+				const Uniformsqipao = THREE.UniformsUtils.clone( shaderqipao.uniforms );
+				Uniformsqipao[ "tCube" ].value = cubeRenderTarget3.texture;
+				var Materialqipao = new THREE.ShaderMaterial( {
+					uniforms: Uniformsqipao,
+					vertexShader: shaderqipao.vertexShader,
+					fragmentShader: shaderqipao.fragmentShader
+				} );
+
+				
+
+				for ( let i = 0; i < 500; i ++ ) {
+
+					var mesh = new THREE.Mesh( geometryqipao, Materialqipao );
+					Materialqipao.transparent=true;
+					Materialqipao.name='Fresnelshader';
+					mesh.position.x = Math.random() * 100 - 50;
+					mesh.position.y = Math.random() * 100 - 50;
+					mesh.position.z = Math.random() * 100 - 50;
+
+					mesh.scale.x = mesh.scale.y = mesh.scale.z = Math.random() * 3 + 1;
+
+					scene.add( mesh );
+
+					spheres.push( mesh );
+
+				}
+
+	
+
+
+				
+				
+				//*******************************************//
+				var Close =new GeneralGUI();
+				gui1= new GUI();
+				gui1.add(Close,'OpenHelper');
+				gui1.add(Close,'CloseHelper');
+				gui1.add(Close,'GUIhide');
+				gui1.add(Close,'GUIshow');
+			    LightIntensity = new function () {
+					this.PLightIntensity = 1;
+					this.ALightIntensity = 0.5;
+				};
+				gui1.add(LightIntensity, 'PLightIntensity', 0, 5,0.01);
+				gui1.add(LightIntensity, 'ALightIntensity', 0, 5,0.01);
+				
+				
+				//*******************************************//
+				
+				
+				raycaster = new THREE.Raycaster();	
+				
+				//*******************************************//		
+				renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true} );
+				
+				renderer.shadowMap.enabled = true;
+           		renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.outputEncoding = THREE.sRGBEncoding;
+			
+				
+				const pmremGenerator = new THREE.PMREMGenerator( renderer );
+				pmremGenerator.compileEquirectangularShader();
+
+				
+				
+				container.appendChild(renderer.domElement);
+				renderer.sortObjects = true;
+				
+				window.addEventListener( 'resize', onWindowResize );
+				
+				window.addEventListener( 'click', onMouseMove, false );
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.minDistance = 1;
+				controls.maxDistance = 1000;
+				controls.target.set( 0, 0, - 0.2 );
+				controls.update();
+				
+
+				
+
+			};
+			
+
+			function animate() {
+				
+					requestAnimationFrame( animate );
+					directionallight.intensity =LightIntensity.PLightIntensity;
+					ambient.intensity = LightIntensity.ALightIntensity;
+					
+				
+					render();
+			}
+			
+			
+			//选择物体
+			
+		
+
+			function onMouseMove( event ) {
+
+				// calculate mouse position in normalized device coordinates
+				// (-1 to +1) for both components
+
+				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+				raycaster.setFromCamera( mouse, camera );
+
+
+				const intersects = raycaster.intersectObjects( scene.children, true);
+			   
+				
+				if ( intersects.length > 0 ) {
+
+					if ( INTERSECTED != intersects[ 0 ].object ) {
+						
+						INTERSECTED = intersects[ 0 ].object;
+						selectedObjectChanged(INTERSECTED);						
+						
+						ShowGUI();	
+					}
+
+				} 
+						
+			}
+
+			
+
+			function render() {
+				
+				
+				const timer = 0.0001 * Date.now();
+				
+				const time = Date.now();
+
+				lon += .15;
+
+				lat = Math.max( - 85, Math.min( 85, lat ) );
+				phi = THREE.MathUtils.degToRad( 90 - lat );
+				theta = THREE.MathUtils.degToRad( lon );
+
+				cube.position.x = 10+Math.cos( time * 0.001 ) * 30;
+				cube.position.y = 10+Math.sin( time * 0.001 ) * 30;
+				cube.position.z = 100+Math.sin( time * 0.001 ) * 30;
+
+				cube.rotation.x += 0.02;
+				cube.rotation.y += 0.03;
+
+			
+				
+			   
+
+					cubeCamera1.update( renderer, scene );
+					//sphereMaterial.envMap = cubeRenderTarget1.texture;
+
+					cubeCamera3.update( renderer, scene );
+			
+
+					cubeCamera2.update( renderer, scene );
+					//cubeMaterial.envMap = cubeRenderTarget2.texture;
+
+			  
+
+				count ++;
+				for ( let i = 0, il = spheres.length; i < il; i ++ ) {
+
+					const sphere = spheres[ i ];
+
+					sphere.position.x = 500 * Math.cos( timer + i );
+					sphere.position.y = 500 * Math.sin( timer + i * 1.1 );
+
+				}
+
+				
+				renderer.render( scene, camera );
+				renderer.autoClear =false;
+				renderer.render(sceneHelpers, camera);
+				renderer.autoClear = true;
+				
+
+				
+				
+				
+		
+			}
+
+			function selectedObjectChanged(object) {
+				
+				if (object === undefined) object = null;
+				
+				if (object === null) {
+					
+					helper.visible = false;
+				
+				} else {
+					
+					helper.setFromObject(object);
+					helper.visible = true;
+					
+				
+				}
+			}
+
+	
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				//render();
+
+			}
+
+			function controlObj_Recursive() {
+				
+				if (feijiModel != null) {
+					
+					var objParet = feijiModel.scene;
+					objParet.traverse(function(child) {
+						if (child instanceof THREE.Mesh) {
+							meshList.push(child);
+							child.receiveShadow=true;
+						
+						}
+					
+					});
+				
+				}
+
+			}
+			
+			function GeneralGUI() {
+				this.CloseHelper = function() {
+					helper.visible = false;
+				}
+				this.OpenHelper = function(){
+					helper.visible = true;
+				}
+				this.GUIhide = function() {
+					if (gui !=null){
+					gui.hide();
+					};
+				}
+				this.GUIshow = function() {
+					if (gui !=null){
+					gui.show();
+					};
+				}
+				
+
+			};
+
+		
+			
+			function ShowGUI() {
+				var usetransparent = false;
+				var mesh =INTERSECTED;
+				var material =mesh.material;
+				var matGroup;
+				var rendererGroup;
+				var PBRGroup;
+				var transparentGroup;
+				var waterGroup;
+				var evmap=true;
+				var controls = new function(){
+					this.modelName = mesh.name;
+					this.materialName = material.name;
+					//CastShadow
+					this.castShadow = mesh.castShadow;
+					//ReceiveShadow
+					this.receiveShadow = mesh.receiveShadow;
+					this.Color = material.color==null ? new THREE.Color(0xFFFFFF) : material.color;;
+					
+					//envMap
+					if (material.envMap != null) {
+						this.isenvMap = true;
+					} else {
+						this.isenvMap = false;
+					}
+					
+					this.envMapIntensity = material.envMapIntensity == null ? 0 : material.envMapIntensity;
+					this.refractionRatio = material.refractionRatio == null ? 1 : material.refractionRatio;
+					this.reflectivity = material.reflectivity == null ? 1 : material.reflectivity;
+					this.metalness = material.metalness == null ? 0  : material.metalness;
+					this.roughness = material.roughness == null ? 0  : material.roughness;
+					this.displacementScale = material.displacementScale == null ? 0  : material.displacementScale;
+					this.normalScale = material.normalScale == null ? 0 : material.normalScale.x;
+					this.aoMapIntensity = material.aoMapIntensity == null ? 0 : material.aoMapIntensity;
+					this.opacity = material.opacity == null ? 1 : material.opacity;
+					this.transparent = usetransparent;
+					this.alphaTest = material.alphaTest == null ? 0 : material.alphaTest;
+					this.transmission = material.transmission == null ? 0 : material.transmission;
+					this.ior = material.ior == null ? 1.5 : material.ior;
+					this.useFresnel = useFresnel;
+					this.FresnelBias = 0.1;
+					this.FresnelPower = 2.0;
+					this.FresnelScale = 1.0;
+					this.FresnelFactor= 0.5;
+					
+
+
+				}
+				
+				if (gui!=null){
+					
+					gui.destroy();
+				
+				}
+				gui = new GUI();
+				gui.domElement.style = 'position:absolute;top:0px;left:0px;width:300px';
+				
+				matGroup = gui.addFolder('Material Configuration');
+				matGroup.open();
+				//Name
+				matGroup.add(controls, 'modelName').name('MeshName').onChange(function(str) {
+					mesh.name = str;
+				});
+				
+				matGroup.add(controls, 'materialName', [ 'StandardMaterial', 'ShaderMaterial','Fresnelshader' ]).name('MaterialType').onChange(function(str){
+					material.name = str;
+					
+					if(material.name =='StandardMaterial'){
+						
+						if (rendererGroup!=null ){
+					
+							matGroup.removeFolder(rendererGroup);
+							rendererGroup=null;
+							transparentGroup=null;
+							
+				
+						}
+						if(waterGroup!=null){
+							matGroup.removeFolder(waterGroup);
+							waterGroup=null;
+						}
+						
+						
+						
+						StandardMaterial();
+					}
+					else if(material.name =='ShaderMaterial'){
+						
+						if (rendererGroup!=null){
+							matGroup.removeFolder(rendererGroup);
+							rendererGroup=null;
+							transparentGroup=null;
+							
+
+						}
+						if(waterGroup!=null){
+							matGroup.removeFolder(waterGroup);
+							waterGroup=null;
+						}
+						
+						OtherMaterial();
+
+					}
+					else if (material.name =='Fresnelshader'){
+						if (rendererGroup!=null){
+							matGroup.removeFolder(rendererGroup);
+							rendererGroup=null;
+							transparentGroup=null;
+
+						}
+						Fresnelmaterial();
+					}
+				});
+				
+				
+				if(material.name =='StandardMaterial'){
+					if (rendererGroup!=null ){
+					
+					matGroup.removeFolder(rendererGroup);
+					rendererGroup=null;
+					transparentGroup=null;
+					
+		
+				}
+				if(waterGroup!=null){
+					matGroup.removeFolder(waterGroup);
+					waterGroup=null;
+				}	
+					StandardMaterial();
+					
+
+
+				}
+				else if(material.name =='ShaderMaterial'){
+					
+					if (rendererGroup!=null){
+							matGroup.removeFolder(rendererGroup);
+							rendererGroup=null;
+							transparentGroup=null;
+							
+
+						}
+						if(waterGroup!=null){
+							matGroup.removeFolder(waterGroup);
+							waterGroup=null;
+						}
+						
+					OtherMaterial();
+				}
+				else {
+					if (rendererGroup!=null){
+							matGroup.removeFolder(rendererGroup);
+							rendererGroup=null;
+							transparentGroup=null;
+
+						}
+					Fresnelmaterial();
+				}
+			
+				
+
+				function StandardMaterial(){
+					
+					for (var i=0;i<shaderholder.length;i++){
+						if(shaderholder[i].name1==mesh.name & shaderholder[i].name2=='StandardMaterial' ){
+							material=shaderholder[i].holdmaterial
+							//material = new THREE.MeshStandardMaterial();
+							//THREE.MeshStandardMaterial.prototype.copy.call( material, INTERSECTED.material );
+							INTERSECTED.material=material;
+							INTERSECTED.material.name='StandardMaterial';
+							//material=INTERSECTED.material;
+							var holder={
+								name1:mesh.name,
+								name2:material.name,
+								holdmaterial:material
+
+							};
+							shaderholder.unshift(holder);
+							break;
+						}
+						
+					}
+					
+				
+
+					
+					
+					rendererGroup = matGroup.addFolder('Render Configuration');
+					rendererGroup.open();
+					rendererGroup.add(controls, 'castShadow').name('CastShadow').onChange(function(str) {
+						mesh.castShadow = str; //CastShadow ON
+						material.needsUpdate = true;
+
+					});
+					rendererGroup.add(controls, 'receiveShadow').name('ReceiveShadow').onChange(function(str) {
+						mesh.receiveShadow = str; //ReceiveShadow ON
+						material.needsUpdate = true;
+					});
+
+					rendererGroup.add(controls, 'isenvMap').name('ReflectionOn').onChange(function(val) {
+						if (val) {
+							material.envMap = cubeRenderTarget1.texture;
+							
+							
+							
+						} else {
+							material.envMap = null;
+						}
+						material.needsUpdate = true;
+						evmap=val;
+						
+					});
+					rendererGroup.add(controls, 'envMapIntensity', 0, 2).name('ReflectionIntensity').onChange(function(val) {
+						if(evmap){
+							material.envMapIntensity = val;
+						}
+					});
+					rendererGroup.add(controls, 'refractionRatio', 0, 2).name('RefractionIntensity').onChange(function(val) {
+						material.refractionRatio = val;
+					});
+					// rendererGroup.add(controls, 'reflectivity', 0, 2).name('reflectivity').onChange(function(val) {
+					// 	material.reflectivity = val;
+					// });
+
+					rendererGroup.addColor(controls, 'Color').name('Color').onChange(function(str){
+						var r = str.r / 255;
+						var g = str.g / 255;
+						var b = str.b / 255;
+						material.color = {
+							r,
+							g,
+							b
+						};
+					})
+					
+					rendererGroup.add(controls, 'transparent').name('Transparent').onChange(function(str) {
+						material.transparent = str;
+						
+						if (transparentGroup!=null){
+							rendererGroup.removeFolder(transparentGroup);
+							transparentGroup=null;
+
+						}
+						
+												
+						if(material.transparent){
+							
+												
+							transparentGroup = rendererGroup.addFolder('Glass');
+							transparentGroup.open();
+							
+							//material.transparent = true;
+							transparentGroup.add(controls, 'opacity', 0, 1, 0.1).name('Opacity').onChange(function(str) {
+								material.opacity = str;
+								material.needsUpdate = true;
+							});
+							transparentGroup.add(controls, 'alphaTest', 0, 1, 0.1).name('Threshold').onChange(function(str) {
+								material.alphaTest = str;
+				 				material.needsUpdate = true;
+							});
+							transparentGroup.add(controls, 'transmission', 0, 1, 0.1).name('Transmission').onChange(function(str) {
+								material.transmission = str;
+								material.needsUpdate = true;
+							});
+							transparentGroup.add(controls, 'ior', 1.0, 2.333, 0.1).name('Ior').onChange(function(str) {
+								material.ior = str;
+								material.needsUpdate = true;
+							});
+							
+							
+						}
+						else{
+							
+							material.transparent = false;
+							material.opacity = 1;
+							material.needsUpdate = true;
+						}
+					
+
+					});
+
+					PBRGroup = rendererGroup.addFolder('PBR Configuraion');
+					PBRGroup.open();
+					PBRGroup.add(controls, 'metalness', 0, 1, 0.01).name('Metalness').onChange(function(val) {
+						material.metalness = val;
+						material.needsUpdate = true;
+					});
+					PBRGroup.add(controls, 'roughness', 0, 1, 0.01).name('Roughness').onChange(function(val) {
+						material.roughness = val;
+						material.needsUpdate = true;
+					});
+					PBRGroup.add(controls, 'normalScale', 0, 10, 0.1).name('Convexity').onChange(function(val) {
+						if (material.normalMap != null) {
+							material.normalScale.x = val;
+							material.normalScale.y = -val;
+							material.needsUpdate = true;
+						}
+					});
+					PBRGroup.add(controls, 'displacementScale', 0, 1, 0.01).name('displacementScale').onChange(function(val) {
+						if (material.displacementMap != null) {
+							material.displacementScale = val;
+							
+							material.needsUpdate = true;
+						}
+					});
+					PBRGroup.add(controls, 'aoMapIntensity', 0, 1, 0.01).name('aoMapIntensity').onChange(function(val) {
+						material.aoMapIntensity = val;
+						material.needsUpdate = true;
+					});
+
+					if(transparentGroup!=null){
+						PBRGroup.removeFolder(transparentGroup);
+						transparentGroup=null;
+						
+					}
+					
+					
+				
+					
+
+				}
+
+				function OtherMaterial(){
+				
+
+					
+					var toonmaterial = new THREE.MeshToonMaterial;
+					toonmaterial.alphaMap=material.alphaMap;
+					toonmaterial.aoMap=material.aoMap;
+					toonmaterial.aoMapIntensity=material.aoMapIntensity;
+					toonmaterial.bumpMap=material.bumpMap;
+					toonmaterial.map=material.map;
+					toonmaterial.normalMap=material.normalMap;
+					toonmaterial.displacementMap=material.displacementMap;
+					toonmaterial.emissiveMap=material.emissiveMap;
+					toonmaterial.emissiveIntensity =material.emissiveIntensity ;
+					INTERSECTED.material=toonmaterial;
+					INTERSECTED.material.name='ShaderMaterial';
+					material=INTERSECTED.material;
+
+				
+					// rendererGroup = matGroup.addFolder('Render Configuration');
+					// rendererGroup.open();
+					// rendererGroup.add(controls, 'castShadow').name('CastShadow').onChange(function(str) {
+					// 	mesh.castShadow = str; //CastShadow ON
+					// 	material.needsUpdate = true;
+					// });
+					// rendererGroup.add(controls, 'receiveShadow').name('ReceiveShadow').onChange(function(str) {
+					// 	mesh.receiveShadow = str; //ReceiveShadow ON
+					// 	material.needsUpdate = true;
+					// });
+					
+					rendererGroup = matGroup.addFolder('Render Configuration');
+					rendererGroup.addColor(controls, 'Color').name('Color').onChange(function(str){
+						var r = str.r / 255;
+						var g = str.g / 255;
+						var b = str.b / 255;
+						material.color = {
+							r,
+							g,
+							b
+						};
+					})
+					rendererGroup.add(controls, 'transparent').name('Transparent').onChange(function(str) {
+						material.transparent = str;
+						
+						if (transparentGroup!=null){
+							rendererGroup.removeFolder(transparentGroup);
+							transparentGroup=null;
+
+						}
+						
+												
+						if(material.transparent){
+							
+												
+							transparentGroup = rendererGroup.addFolder('Glass');
+							transparentGroup.open();
+							
+							//material.transparent = true;
+							transparentGroup.add(controls, 'opacity', 0, 1, 0.1).name('Opacity').onChange(function(str) {
+								material.opacity = str;
+								material.needsUpdate = true;
+							});
+							transparentGroup.add(controls, 'alphaTest', 0, 1, 0.1).name('Threshold').onChange(function(str) {
+								material.alphaTest = str;
+				 				material.needsUpdate = true;
+							});
+							transparentGroup.add(controls, 'transmission', 0, 1, 0.1).name('Transmission').onChange(function(str) {
+								material.transmission = str;
+								material.needsUpdate = true;
+							});
+							transparentGroup.add(controls, 'ior', 1.0, 2.333, 0.1).name('Ior').onChange(function(str) {
+								material.ior = str;
+								material.needsUpdate = true;
+							});
+							
+							
+						}
+						else{
+							
+							material.transparent = false;
+							material.opacity = 1;
+							material.needsUpdate = true;
+						}
+
+					});
+					
+					
+				}
+				function Fresnelmaterial(){
+					
+					var FresnelShader =new THREE.ShaderMaterial( {
+
+						uniforms: {
+
+							mRefractionRatio: { value: 1.02 },
+							mFresnelBias: { value: 0.1 },
+							mFresnelPower: { value: 2.0 },
+							mFresnelScale: { value: 1.0 },
+							vfresnelfactor:{ value: 0.5},
+							tCube: { value: null },
+							
+
+						},
+						blending: THREE.NormalBlending,
+						depthTest: false,
+						transparent: true,
+						vertexShader: document.getElementById( 'vertexshader' ).textContent,
+						fragmentShader: document.getElementById( 'fragmentshader' ).textContent
+
+
+
+					})
+					
+					const shader = FresnelShader;
+					const Uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+					Uniforms[ "tCube" ].value = cubeRenderTarget1.texture;
+					
+					var Material = new THREE.ShaderMaterial( {
+						uniforms: Uniforms,
+						vertexShader: shader.vertexShader,
+						fragmentShader: shader.fragmentShader
+					} );
+					
+					INTERSECTED.material=Material;
+					INTERSECTED.material.name='Fresnelshader';
+					material=INTERSECTED.material;
+					material.transparent=true;
+					//material.opacity=0.1;
+					
+					if(waterGroup!=null){
+						matGroup.removeFolder(waterGroup);
+						waterGroup=null;
+					}
+
+
+
+					waterGroup = matGroup.addFolder('WaterQuality');
+					waterGroup.open();
+
+					waterGroup.add(controls, 'FresnelFactor', 0.0, 1.0, 0.1).name('Ratio').onChange(function(str) {
+						Uniforms[ 'vfresnelfactor' ].value = str;
+						material.needsUpdate = true;
+					});
+ 					waterGroup.add(controls, 'FresnelBias', 0.0, 1.0, 0.1).name('Bias').onChange(function(str) {
+						Uniforms[ 'mFresnelBias' ].value = str;
+						material.needsUpdate = true;
+					});
+					waterGroup.add(controls, 'FresnelPower', 0.0, 1.0, 0.1).name('Power').onChange(function(str) {
+						Uniforms[ 'mFresnelPower' ].value = str;
+						material.needsUpdate = true;
+					});
+					waterGroup.add(controls, 'FresnelScale', 0.0, 1.0, 0.1).name('Scale').onChange(function(str) {
+						Uniforms[ 'mFresnelScale' ].value = str;
+						material.needsUpdate = true;
+					});
+				
+					
+				}
+			
+				
+
+				
+								
+			}
+		
+		</script>
+		<script type="x-shader/x-vertex" id="vertexshader">
+
+			
+			uniform float mRefractionRatio;
+			uniform float mFresnelBias;
+			uniform float mFresnelScale;
+			uniform float mFresnelPower;
+			uniform float vfresnelfactor;
+			varying vec3 vReflect;
+			varying vec3 vRefract[3];
+			varying float vReflectionFactor;
+			varying float vratio;
+			
+			
+
+			void main() {
+
+				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+				vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+
+				vec3 worldNormal = normalize( mat3( modelMatrix[0].xyz, modelMatrix[1].xyz, modelMatrix[2].xyz ) * normal );
+
+				vec3 I = worldPosition.xyz - cameraPosition;
+
+				vReflect = reflect( I, worldNormal );
+				vRefract[0] = refract( normalize( I ), worldNormal, mRefractionRatio );
+				vRefract[1] = refract( normalize( I ), worldNormal, mRefractionRatio * 0.99 );
+				vRefract[2] = refract( normalize( I ), worldNormal, mRefractionRatio * 0.98 );
+				vReflectionFactor = mFresnelBias + mFresnelScale * pow( 1.0 + dot( normalize( I ), worldNormal ), mFresnelPower );
+				vratio=vfresnelfactor;
+				gl_Position = projectionMatrix * mvPosition;
+			}
+
+		
+
+
+	</script>
+
+	<script type="x-shader/x-fragment" id="fragmentshader">
+
+		uniform samplerCube tCube;
+
+		varying vec3 vReflect;
+		varying vec3 vRefract[3];
+		varying float vReflectionFactor;
+		varying float vratio;
+		
+		vec4 color = vec4(0.0);
+
+		void main() {
+
+			vec4 reflectedColor = textureCube( tCube, vec3( vReflect.x, vReflect.yz ) );
+			vec4 refractedColor = vec4( 1.0 );
+
+			refractedColor.r = textureCube( tCube, vec3( -vRefract[0].x, vRefract[0].yz ) ).r;
+			refractedColor.g = textureCube( tCube, vec3( -vRefract[1].x, vRefract[1].yz ) ).g;
+			refractedColor.b = textureCube( tCube, vec3( -vRefract[2].x, vRefract[2].yz ) ).b;
+
+			
+			color = mix( refractedColor, reflectedColor, clamp( vReflectionFactor, 0.0, 1.0 ));
+			gl_FragColor =  mix(color,vec4(vec3(0.0),0),clamp( vratio, 0.0, 1.0 ));
+		}
+
+
+	</script>
+	
+
+
+	</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - glTF loader</title>
+		<meta charset="utf-8">
+	</head>
+
+	<body>
+	
+		<script type="module">
+
+			import * as THREE from '../build/three.module.js';
+
+			import { OrbitControls } from '../examples/jsm/controls/OrbitControls.js';
+			import { GLTFLoader } from '../examples/jsm/loaders/GLTFLoader.js';
+			import { RGBELoader } from '../examples/jsm/loaders/RGBELoader.js';
+			import Stats from '../examples/jsm/libs/stats.module.js';
+
+			let camera, scene, renderer,spotLight,lightHelper;
+			let container;
+			//let stats;
+			let raycaster;
+			let INTERSECTED;
+			let theta = 0;
+			
+			
+			var feijiModel;
+
+			
+			
+			const mouse = new THREE.Vector2();
+			const radius = 10;
+
+			init();
+			animate();
+
+			function init() {
+				
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+		
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.01, 2000 );
+				camera.position.set( 0, 1, -8 );
+
+				//Create a scene
+				scene = new THREE.Scene();
+
+
+				//Light settings
+				const ambient = new THREE.AmbientLight( 0xffffff, 0.8 );
+				scene.add( ambient );
+				
+				
+				var ly;
+				//Load a gltf file
+				var loader = new GLTFLoader().setPath( '../gltfmodels/' );
+				loader.load( 'scene.gltf', function ( object ) {
+					feijiModel = object;
+					ly = feijiModel.scene.children;
+					//xinzangModel.scene.rotation.y = Math.PI * 0.4;
+					scene.add(feijiModel.scene);
+					feijiModel.scene.scale.set(2,2,2);
+					
+				} );
+				
+				
+     
+                //Geometries settings
+                var box = new THREE.BoxGeometry(1, 1, 1);
+                var material = new THREE.MeshPhongMaterial({
+
+                    color: 0xff8080, 
+					dithering: true 
+
+                }); //
+				var mesh = new THREE.Mesh(box, material);
+				
+				var box1 = new THREE.BoxGeometry(1, 1, 1);
+                var material1 = new THREE.MeshPhongMaterial({
+
+                    color: 0xff8080, 
+					dithering: true 
+
+                }); //
+                var mesh1 = new THREE.Mesh(box1, material1);
+				
+				scene.add(mesh);
+				mesh.position.set(1,1,1);		
+				scene.add(mesh1);
+				mesh1.position.set(2,2,2);	
+
+				raycaster = new THREE.Raycaster();			
+				
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setClearColor(0x000000, 1);
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				//renderer.toneMapping = THREE.ACESFilmicToneMapping;
+				//renderer.toneMappingExposure = 1;
+				//renderer.outputEncoding = THREE.sRGBEncoding;
+				container.appendChild( renderer.domElement );
+			
+				//stats = new Stats();
+				//container.appendChild( stats.dom );
+			
+				const pmremGenerator = new THREE.PMREMGenerator( renderer );
+				pmremGenerator.compileEquirectangularShader();
+
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.addEventListener( 'change', render ); // use if there is no animation loop
+				controls.minDistance = 2;
+				controls.maxDistance = 10;
+				controls.target.set( 0, 0, - 0.2 );
+				controls.update();
+
+				window.addEventListener( 'resize', onWindowResize );
+				window.addEventListener( 'click', onMouseMove, false );
+				window.requestAnimationFrame(render);
+				
+			};
+			
+			
+			//选择物体
+			
+		
+
+			function onMouseMove( event ) {
+
+				// calculate mouse position in normalized device coordinates
+				// (-1 to +1) for both components
+
+				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+				raycaster.setFromCamera( mouse, camera );
+
+				const intersects = raycaster.intersectObjects( scene.children, true);
+
+				if ( intersects.length > 0 ) {
+
+					if ( INTERSECTED != intersects[ 0 ].object ) {
+
+						if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+
+						INTERSECTED = intersects[ 0 ].object;
+						INTERSECTED.currentHex = INTERSECTED.material.emissive.getHex();
+						INTERSECTED.material.emissive.setHex( 0xff0000 );
+
+					}
+
+				} else {
+
+					if ( INTERSECTED ) INTERSECTED.material.emissive.setHex( INTERSECTED.currentHex );
+
+					INTERSECTED = null;
+
+				}
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+				//stats.update();
+
+			}
+
+			function render() {
+
+				//theta += 0.1;
+
+				//camera.position.x = radius * Math.sin( THREE.MathUtils.degToRad( theta ) );
+				//camera.position.y = radius * Math.sin( THREE.MathUtils.degToRad( theta ) );
+				//camera.position.z = radius * Math.cos( THREE.MathUtils.degToRad( theta ) );
+				//camera.lookAt( scene.position );
+
+				//camera.updateMatrixWorld();
+
+				// find intersections
+
+				
+
+				renderer.render( scene, camera );
+
+			}
+
+	
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+				render();
+
+			}
+
+			//
+
+		
+		</script>
+
+	</body>
+</html>
